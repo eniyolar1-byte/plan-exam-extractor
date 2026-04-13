@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Municode Document Extractor — Jansen Stage 1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222534;
+    --border: #2e3247;
+    --accent: #4f7cff;
+    --accent2: #00d4aa;
+    --warn: #ffb84d;
+    --danger: #ff5f5f;
+    --text: #e8eaf0;
+    --text2: #8b90a8;
+    --text3: #555b76;
+    --plan: #4f7cff;
+    --insp: #00d4aa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+  }
+
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(79,124,255,0.1);
+    border: 1px solid rgba(79,124,255,0.25);
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  header span {
+    font-size: 13px;
+    color: var(--text3);
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(79,124,255,0.05);
+  }
+
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .upload-zone h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .upload-zone p {
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  /* Processing */
+  .processing-list {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .file-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .file-item .fname {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-item .status {
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .status.pending { color: var(--text3); }
+  .status.loading { color: var(--warn); }
+  .status.done { color: var(--accent2); }
+  .status.error { color: var(--danger); }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--warn);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  .results-section {
+    margin-top: 32px;
+  }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .results-header h2 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+
+  .btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #3d6ae8; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--text2); color: var(--text); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(255,95,95,0.3);
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  .btn-danger:hover { background: rgba(255,95,95,0.1); }
+
+  /* Doc card */
+  .doc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .doc-card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .doc-type-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .badge-plan {
+    background: rgba(79,124,255,0.15);
+    color: var(--plan);
+    border: 1px solid rgba(79,124,255,0.3);
+  }
+
+  .badge-insp {
+    background: rgba(0,212,170,0.15);
+    color: var(--insp);
+    border: 1px solid rgba(0,212,170,0.3);
+  }
+
+  .badge-unknown {
+    background: rgba(139,144,168,0.15);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .doc-meta {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .meta-label {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+  }
+
+  .meta-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .meta-value input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 7px;
+    width: 160px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .meta-value input:focus { border-color: var(--accent); }
+
+  /* Action items table */
+  .actions-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .actions-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .actions-table td {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(46,50,71,0.5);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .actions-table tr:last-child td { border-bottom: none; }
+
+  .actions-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+  .item-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .action-text {
+    color: var(--text);
+  }
+
+  .action-text textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 4px 7px;
+    resize: vertical;
+    min-height: 60px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .action-text textarea:focus { border-color: var(--accent); }
+
+  .code-ref input {
+    background: var(--surface2);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 3px 7px;
+    width: 100px;
+    outline: none;
+  }
+  .code-ref input:focus { border: 1px solid var(--accent); }
+
+  .add-row-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text3);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 8px 14px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: all 0.15s;
+    border-top: none;
+  }
+  .add-row-btn:hover { color: var(--accent); border-color: rgba(79,124,255,0.4); background: rgba(79,124,255,0.03); }
+
+  /* Export bar */
+  .export-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 10;
+  }
+
+  .export-bar .summary {
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .export-bar .summary strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .btn-group { display: flex; gap: 8px; }
+
+  .hidden { display: none; }
+
+  /* Empty state */
+  .empty-results {
+    text-align: center;
+    padding: 48px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+
+  /* Error message */
+  .error-msg {
+    background: rgba(255,95,95,0.08);
+    border: 1px solid rgba(255,95,95,0.25);
+    color: var(--danger);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .project-stage-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 3px 7px;
+    width: 70px;
+    outline: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BHP</div>
+  <h1>Municode Document Extractor</h1>
+  <span>Jansen Stage 1 — Building Permit Log</span>
+</header>
+
+<div class="main">
+  <!-- Upload -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".pdf" multiple>
+    <div class="upload-icon">⬆</div>
+    <h2>Drop PDFs here or click to browse</h2>
+    <p>Plan Examination Reports & Periodic Inspection Reports — up to 5 files</p>
+  </div>
+
+  <div class="processing-list" id="processingList"></div>
+
+  <!-- Results -->
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <h2>Extracted Data</h2>
+      <button class="btn btn-outline" onclick="clearAll()">Clear All</button>
+    </div>
+    <div id="docCards"></div>
+  </div>
+</div>
+
+<!-- Export bar -->
+<div class="export-bar" id="exportBar" style="display:none">
+  <div class="summary" id="exportSummary"></div>
+  <div class="btn-group">
+    <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-primary" onclick="exportCSV(true)">Copy for Excel</button>
+  </div>
+</div>
+
+<script>
+const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+const allDocs = []; // { meta, actions[], fileName }
+
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const processingList = document.getElementById('processingList');
+const docCards = document.getElementById('docCards');
+const exportBar = document.getElementById('exportBar');
+const exportSummary = document.getElementById('exportSummary');
+
+// Drag and drop
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  handleFiles(Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf'));
+});
+fileInput.addEventListener('change', () => handleFiles(Array.from(fileInput.files)));
+
+async function handleFiles(files) {
+  if (!files.length) return;
+  for (const file of files) {
+    await processFile(file);
+  }
+  updateExportBar();
+}
+
+function addFileItem(name) {
+  const el = document.createElement('div');
+  el.className = 'file-item';
+  el.id = `fi-${name}`;
+  el.innerHTML = `
+    <div class="fname">${name}</div>
+    <div class="status pending" id="st-${name}">Queued</div>
+  `;
+  processingList.appendChild(el);
+  return el;
+}
+
+function setStatus(name, state, msg) {
+  const st = document.getElementById(`st-${name}`);
+  const fi = document.getElementById(`fi-${name}`);
+  if (!st) return;
+  st.className = `status ${state}`;
+  st.textContent = msg;
+  // spinner
+  const sp = fi.querySelector('.spinner');
+  if (state === 'loading') {
+    if (!sp) {
+      const s = document.createElement('div');
+      s.className = 'spinner';
+      fi.insertBefore(s, st);
+    }
+  } else {
+    if (sp) sp.remove();
+  }
+}
+
+async function processFile(file) {
+  const id = file.name.replace(/[^a-z0-9]/gi, '_');
+  addFileItem(file.name);
+  setStatus(file.name, 'loading', 'Reading PDF...');
+
+  try {
+    const base64 = await fileToBase64(file);
+    setStatus(file.name, 'loading', 'Extracting with AI...');
+
+    const result = await extractFromPDF(base64, file.name);
+    if (result.error) throw new Error(result.error);
+
+    allDocs.push({ ...result, fileName: file.name, id: Date.now() + Math.random() });
+    renderDocCard(allDocs[allDocs.length - 1]);
+    setStatus(file.name, 'done', `Done — ${result.actions.length} action(s)`);
+  } catch (err) {
+    setStatus(file.name, 'error', 'Failed');
+    const fi = document.getElementById(`fi-${file.name}`);
+    const errEl = document.createElement('div');
+    errEl.className = 'error-msg';
+    errEl.textContent = `Error: ${err.message}`;
+    fi.after(errEl);
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function extractFromPDF(base64, filename) {
+  const prompt = `You are extracting data from a Municode building inspection/plan examination PDF for BHP Jansen Stage 1.
+
+Extract the following and return ONLY valid JSON, no markdown, no explanation:
+
+{
+  "docType": "PLAN EXAMINATION REPORT" | "PERIODIC INSPECTION REPORT" | "UNKNOWN",
+  "date": "YYYY-MM-DD or empty string",
+  "fileNumber": "the File: number e.g. 3059422",
+  "inspectionNumber": "inspection number if present, else empty string",
+  "title": "the project title/name",
+  "actions": [
+    {
+      "itemNum": "item number e.g. 1, 2, 3.a, etc.",
+      "codeRef": "code reference e.g. 3.2.4.5 if present, else empty",
+      "actionText": "the full action/condition text"
+    }
+  ]
+}
+
+For PLAN EXAMINATION REPORT: extract conditions from 'See Plan Examination Report Attachment for conditions of permit issuance' section.
+For PERIODIC INSPECTION REPORT: extract items from 'The following items below are required to be completed' section.
+If neither section exists or the document is a memo/email, return docType UNKNOWN and empty actions array.
+Return only the raw JSON object.`;
+
+  const response = await fetch(ANTHROPIC_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data.content?.find(b => b.type === 'text')?.text || '';
+  const clean = text.replace(/```json|```/g, '').trim();
+
+  try {
+    return JSON.parse(clean);
+  } catch {
+    throw new Error('Could not parse AI response');
+  }
+}
+
+function renderDocCard(doc) {
+  const badgeClass = doc.docType === 'PLAN EXAMINATION REPORT' ? 'badge-plan'
+    : doc.docType === 'PERIODIC INSPECTION REPORT' ? 'badge-insp' : 'badge-unknown';
+  const badgeLabel = doc.docType === 'PLAN EXAMINATION REPORT' ? 'Plan Exam'
+    : doc.docType === 'PERIODIC INSPECTION REPORT' ? 'Inspection' : 'Unknown';
+
+  const card = document.createElement('div');
+  card.className = 'doc-card';
+  card.id = `card-${doc.id}`;
+
+  const inspRow = doc.docType === 'PERIODIC INSPECTION REPORT' ? `
+    <div class="meta-item">
+      <div class="meta-label">Insp #</div>
+      <div class="meta-value"><input type="text" value="${esc(doc.inspectionNumber)}" style="width:80px" onchange="updateDocMeta('${doc.id}','inspectionNumber',this.value)"></div>
+    </div>` : '';
+
+  card.innerHTML = `
+    <div class="doc-card-header">
+      <span class="doc-type-badge ${badgeClass}">${badgeLabel}</span>
+      <div class="doc-meta">
+        <div class="meta-item">
+          <div class="meta-label">File #</div>
+          <div class="meta-value"><input type="text" value="${esc(doc.fileNumber)}" style="width:100px" onchange="updateDocMeta('${doc.id}','fileNumber',this.value)"></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Date</div>
+          <div class="meta-value"><input type="text" value="${esc(doc.date)}" style="width:110px" onchange="updateDocMeta('${doc.id}','date',this.value)"></div>
+        </div>
+        ${inspRow}
+        <div class="meta-item">
+          <div class="meta-label">Title</div>
+          <div class="meta-value"><input type="text" value="${esc(doc.title)}" style="width:340px" onchange="updateDocMeta('${doc.id}','title',this.value)"></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Project Stage</div>
+          <div class="meta-value"><input class="project-stage-input" type="text" placeholder="JS1" onchange="updateDocMeta('${doc.id}','projectStage',this.value)"></div>
+        </div>
+      </div>
+      <button class="btn btn-danger" onclick="removeDoc('${doc.id}')">Remove</button>
+    </div>
+    <table class="actions-table" id="tbl-${doc.id}">
+      <thead>
+        <tr>
+          <th style="width:70px">Item #</th>
+          <th style="width:110px">Code Ref</th>
+          <th>Action Required</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-${doc.id}">
+        ${doc.actions.map((a, i) => actionRow(doc.id, i, a)).join('')}
+        ${doc.actions.length === 0 ? `<tr><td colspan="3" style="color:var(--text3);font-size:13px;padding:16px 14px">No action items extracted — document may be a memo or unsupported format.</td></tr>` : ''}
+      </tbody>
+    </table>
+    <button class="add-row-btn" onclick="addRow('${doc.id}')">+ Add row</button>
+  `;
+
+  docCards.appendChild(card);
+}
+
+function actionRow(docId, idx, action) {
+  return `<tr id="row-${docId}-${idx}">
+    <td class="item-num"><input type="text" value="${esc(action.itemNum)}" style="background:var(--surface2);border:1px solid transparent;border-radius:3px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:3px 7px;width:56px;outline:none" onchange="updateAction('${docId}',${idx},'itemNum',this.value)"></td>
+    <td class="code-ref"><input type="text" value="${esc(action.codeRef)}" onchange="updateAction('${docId}',${idx},'codeRef',this.value)"></td>
+    <td class="action-text"><textarea onchange="updateAction('${docId}',${idx},'actionText',this.value)">${esc(action.actionText)}</textarea></td>
+  </tr>`;
+}
+
+function updateDocMeta(id, field, val) {
+  const doc = allDocs.find(d => String(d.id) === String(id));
+  if (doc) doc[field] = val;
+  updateExportBar();
+}
+
+function updateAction(docId, idx, field, val) {
+  const doc = allDocs.find(d => String(d.id) === String(docId));
+  if (doc && doc.actions[idx]) doc.actions[idx][field] = val;
+}
+
+function addRow(docId) {
+  const doc = allDocs.find(d => String(d.id) === String(docId));
+  if (!doc) return;
+  const idx = doc.actions.length;
+  doc.actions.push({ itemNum: '', codeRef: '', actionText: '' });
+  const tbody = document.getElementById(`tbody-${docId}`);
+  tbody.insertAdjacentHTML('beforeend', actionRow(docId, idx, doc.actions[idx]));
+  updateExportBar();
+}
+
+function removeDoc(id) {
+  const i = allDocs.findIndex(d => String(d.id) === String(id));
+  if (i > -1) allDocs.splice(i, 1);
+  document.getElementById(`card-${id}`)?.remove();
+  updateExportBar();
+}
+
+function clearAll() {
+  allDocs.length = 0;
+  docCards.innerHTML = '';
+  processingList.innerHTML = '';
+  updateExportBar();
+}
+
+function updateExportBar() {
+  const total = allDocs.reduce((sum, d) => sum + d.actions.length, 0);
+  if (allDocs.length === 0) {
+    exportBar.style.display = 'none';
+    return;
+  }
+  exportBar.style.display = 'flex';
+  exportSummary.innerHTML = `<strong>${allDocs.length}</strong> document(s) · <strong>${total}</strong> action row(s) ready`;
+}
+
+function buildRows() {
+  const rows = [];
+  for (const doc of allDocs) {
+    const type = doc.docType === 'PLAN EXAMINATION REPORT' ? 'PLAN EXAMINATION REPORT'
+      : doc.docType === 'PERIODIC INSPECTION REPORT' ? 'PERIODIC INSPECTION REPORT' : doc.docType;
+    for (const a of doc.actions) {
+      rows.push([
+        '',                        // Transmittal (blank — assigned manually)
+        '',                        // Doc # (blank — assigned manually)
+        doc.fileNumber || '',      // Municode File #
+        doc.inspectionNumber || '',// Insp #
+        type,                      // Type
+        doc.date || '',            // Date
+        doc.title || '',           // Title
+        a.itemNum || '',           // Item
+        a.codeRef || '',           // Code Ref
+        a.actionText || '',        // Action Required
+        '',                        // Action By
+        '',                        // Action Due Date
+        '',                        // Date Closed
+        '',                        // Status
+        '',                        // Comments
+        doc.projectStage || 'JS1' // Project Stage
+      ]);
+    }
+  }
+  return rows;
+}
+
+function exportCSV() {
+  const headers = ['Transmittal','Doc #','Municode Plan Exam# / File #','Insp #','Type','Date','Title','Item','Code ref. NBC 2015','Action Required','Action By','Action Due Date','Date Closed','STATUS','Comments/Updates/Notes','Project Stage'];
+  const rows = buildRows();
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'plan_exam_extract.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCSV(copyMode) {
+  const headers = ['Transmittal','Doc #','Municode Plan Exam# / File #','Insp #','Type','Date','Title','Item','Code ref. NBC 2015','Action Required','Action By','Action Due Date','Date Closed','STATUS','Comments/Updates/Notes','Project Stage'];
+  const rows = buildRows();
+
+  if (copyMode) {
+    const tsv = [headers, ...rows].map(r => r.join('\t')).join('\n');
+    navigator.clipboard.writeText(tsv).then(() => {
+      const btn = document.querySelector('.btn-primary');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = orig, 2000);
+    });
+  } else {
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'plan_exam_extract.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
